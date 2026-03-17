@@ -6,12 +6,13 @@ namespace StrivoIngestPublish;
 internal static class CsvMessageBuilder
 {
     /// <summary>
-    /// Builds a JSON message payload from a CSV header line and a data line.
+    /// Builds a JSON message payload from a CSV data line using default column names.
+    /// Column names: Id, Message, Message2, Message3, …
     /// </summary>
-    internal static string BuildMessage(string headerLine, string dataLine, string sourceBlobName)
+    internal static string BuildMessage(string dataLine, string sourceBlobName)
     {
-        var headers = ParseCsvLine(headerLine);
         var values = ParseCsvLine(dataLine);
+        var headers = GenerateDefaultHeaders(values.Length);
 
         var fields = new List<string>(headers.Length + 1)
         {
@@ -21,10 +22,35 @@ internal static class CsvMessageBuilder
         for (int i = 0; i < headers.Length; i++)
         {
             string value = i < values.Length ? values[i] : string.Empty;
-            fields.Add($"\"{EscapeJson(headers[i])}\":\"{EscapeJson(value)}\"");
+            fields.Add($"\"{headers[i]}\":\"{EscapeJson(value)}\"");
         }
 
         return "{" + string.Join(",", fields) + "}";
+    }
+
+    /// <summary>
+    /// Returns default column names for a given column count.
+    /// Index 0 → "Id", index 1 → "Message", index n ≥ 2 → "Message{n}".
+    /// </summary>
+    internal static string[] GenerateDefaultHeaders(int columnCount)
+    {
+        if (columnCount == 0)
+        {
+            return [];
+        }
+
+        var headers = new string[columnCount];
+        for (int i = 0; i < columnCount; i++)
+        {
+            headers[i] = i switch
+            {
+                0 => "Id",
+                1 => "Message",
+                _ => $"Message{i}"
+            };
+        }
+
+        return headers;
     }
 
     /// <summary>

@@ -53,13 +53,7 @@ public class CsvIngestFunction
             using var stream = await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
             using var reader = new StreamReader(stream);
 
-            string? headerLine = await reader.ReadLineAsync(cancellationToken);
-            if (headerLine is null)
-            {
-                _logger.LogWarning("Blob {BlobName} is empty – skipping.", blobItem.Name);
-                continue;
-            }
-
+            int rowCount = 0;
             string? line;
             while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
             {
@@ -68,13 +62,19 @@ public class CsvIngestFunction
                     continue;
                 }
 
-                var message = CsvMessageBuilder.BuildMessage(headerLine, line, blobItem.Name);
+                rowCount++;
+                var message = CsvMessageBuilder.BuildMessage(line, blobItem.Name);
 
                 await queueClient.SendMessageAsync(message, cancellationToken: cancellationToken);
                 _logger.LogDebug("Published row to queue from {BlobName}: {Message}", blobItem.Name, message);
 
                 int delayMs = Random.Shared.Next(100, 3001);
                 await Task.Delay(delayMs, cancellationToken);
+            }
+
+            if (rowCount == 0)
+            {
+                _logger.LogWarning("Blob {BlobName} is empty – skipping.", blobItem.Name);
             }
         }
 
