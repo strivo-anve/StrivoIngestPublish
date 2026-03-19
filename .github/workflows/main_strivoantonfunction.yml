@@ -11,12 +11,15 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '10.0.x' # set this to the dotnet version to use
+  DOTNET_VERSION: '10.0' # set this to the dotnet version to use
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
@@ -33,6 +36,13 @@ jobs:
           dotnet build --configuration Release --output ./output
           popd
       
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_61E6F41E6EA24C98AA2E3D22BDE25E66 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF6C6963000D45F2AD6C6E1AA01C0475 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_DE09B9CE9A7E4154B8EB886AE786E70F }}
+
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
         id: fa
@@ -40,4 +50,4 @@ jobs:
           app-name: 'StrivoAntonFunction'
           slot-name: 'Production'
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E556E2B51B3B4352AAF568D741EACC51 }}
+          
